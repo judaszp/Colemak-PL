@@ -23,7 +23,7 @@ sudo ./install.sh
 ```
 
 The installer maps the ASUS Copilot shortcut `Left Meta + Left Shift + F23` to
-`Right Meta` (Right Super) with keyd. It also installs the Linux text-console
+`Right Control` with keyd. It also installs the Linux text-console
 keymap, sets it as the system vconsole keymap, and rebuilds the initramfs so it
 is active at the disk-unlock prompt during boot. The system XKB default is set
 to layout `us`, variant `colemak_pl`. In Omarchy's
