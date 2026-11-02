@@ -27,27 +27,54 @@ import sys
 
 path = pathlib.Path(sys.argv[1])
 content = path.read_text()
-if "<name>colemak_pl</name>" in content:
-    raise SystemExit(0)
-for match in re.finditer(r"<layout>.*?</layout>", content, re.S):
-    block = match.group()
-    if "<name>us</name>" not in block:
-        continue
-    entry = '''        <variant>
+
+layout_pattern = re.compile(r"<layout>.*?</layout>", re.S)
+variant_pattern = re.compile(
+    r"<variant>\s*<configItem>\s*<name>\s*colemak_pl\s*</name>\s*"
+    r"<description>\s*Colemak-PL\s*</description>\s*</configItem>\s*</variant>",
+    re.S,
+)
+entry = '''        <variant>
           <configItem>
             <name>colemak_pl</name>
             <description>Colemak-PL</description>
           </configItem>
         </variant>
 '''
+found_us = False
+
+def fix_layout(match):
+    global found_us
+    block = match.group()
+    header = re.match(r"\s*<layout>\s*<configItem>(.*?)</configItem>", block, re.S)
+    layout_name = re.search(r"<name>\s*(.*?)\s*</name>", header.group(1), re.S) if header else None
+    if not layout_name:
+        return block
+
+    is_us = layout_name.group(1).strip() == "us"
+    if is_us:
+        found_us = True
+
+    variants = list(variant_pattern.finditer(block))
+    if not is_us:
+        return variant_pattern.sub("", block)
+
+    # Keep one correct entry under US, remove duplicates, and repair earlier
+    # installs that accidentally placed the variant under another layout.
+    if variants:
+        for duplicate in reversed(variants[1:]):
+            block = block[:duplicate.start()] + block[duplicate.end():]
+        return block
+
     closing = "</variantList>"
     if closing not in block:
         raise SystemExit("US XKB layout has no variantList")
-    block = block.replace(closing, entry + "        " + closing, 1)
-    path.write_text(content[:match.start()] + block + content[match.end():])
-    break
-else:
+    return block.replace(closing, entry + "        " + closing, 1)
+
+content = layout_pattern.sub(fix_layout, content)
+if not found_us:
     raise SystemExit("Could not find the US XKB layout")
+path.write_text(content)
 PY
 
 localectl set-x11-keymap us pc105 colemak_pl
