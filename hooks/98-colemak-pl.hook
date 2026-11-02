@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = xkeyboard-config
+
+[Action]
+Description = Reapplying the Colemak-PL XKB layout
+When = PostTransaction
+Exec = /usr/local/libexec/colemak-pl/reapply-xkb

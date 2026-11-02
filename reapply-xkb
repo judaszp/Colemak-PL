@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+symbols=/usr/share/X11/xkb/symbols/us
+rules=/usr/share/X11/xkb/rules/evdev.xml
+marker='// BEGIN Colemak-PL'
+[[ -f "$symbols" && -f "$rules" ]] || { echo 'XKB files not found' >&2; exit 1; }
+
+if ! grep -Fq "$marker" "$symbols"; then
+  cat >> "$symbols" <<'XKB'
+
+// BEGIN Colemak-PL
+partial alphanumeric_keys
+xkb_symbols "colemak_pl" {
+    include "us(colemak)"
+    name[Group1] = "Colemak-PL";
+    key <BKSP> { [ Caps_Lock ] };
+};
+// END Colemak-PL
+XKB
+fi
+
+python - "$rules" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+content = path.read_text()
+if "<name>colemak_pl</name>" in content:
+    raise SystemExit(0)
+for match in re.finditer(r"<layout>.*?</layout>", content, re.S):
+    block = match.group()
+    if "<name>us</name>" not in block:
+        continue
+    entry = '''        <variant>
+          <configItem>
+            <name>colemak_pl</name>
+            <description>Colemak-PL</description>
+          </configItem>
+        </variant>
+'''
+    closing = "</variantList>"
+    if closing not in block:
+        raise SystemExit("US XKB layout has no variantList")
+    block = block.replace(closing, entry + "        " + closing, 1)
+    path.write_text(content[:match.start()] + block + content[match.end():])
+    break
+else:
+    raise SystemExit("Could not find the US XKB layout")
+PY
+
+localectl set-x11-keymap us pc105 colemak_pl

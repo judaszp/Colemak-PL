@@ -1,0 +1,12 @@
+// Colemak-PL: standard US Colemak with the Caps Lock and Backspace keys swapped.
+// Based on the XKB us(colemak) layout.
+partial alphanumeric_keys
+xkb_symbols "colemak_pl" {
+    include "us(colemak)"
+
+    name[Group1] = "Colemak-PL";
+
+    // The base Colemak variant maps Caps Lock to Backspace. Move Caps Lock
+    // to the physical Backspace key so the two keys are exchanged.
+    key <BKSP> { [ Caps_Lock ] };
+};
