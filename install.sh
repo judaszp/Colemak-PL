@@ -9,6 +9,7 @@ fi
 package_dir=$(cd -- "$(dirname -- "$0")" && pwd)
 kbd_dir=/usr/share/kbd/keymaps/i386/colemak
 persistent_dir=/usr/local/libexec/colemak-pl
+vconsole_conf=/etc/vconsole.conf
 
 if ! command -v keyd >/dev/null 2>&1; then
   echo "Install keyd first (Arch/Omarchy: sudo pacman -S keyd)." >&2
@@ -18,6 +19,19 @@ fi
 "$package_dir/reapply-xkb"
 if [[ -f "$package_dir/colemak-pl.map" && -d "$kbd_dir" ]]; then
   gzip -n -c "$package_dir/colemak-pl.map" > "$kbd_dir/colemak-pl.map.gz"
+  if [[ -e "$vconsole_conf" ]]; then
+    cp -a "$vconsole_conf" "$vconsole_conf.bak.colemak-pl.$(date +%s)"
+  fi
+  if [[ -f "$vconsole_conf" ]] && grep -q '^KEYMAP=' "$vconsole_conf"; then
+    sed -i 's/^KEYMAP=.*/KEYMAP=colemak\/colemak-pl/' "$vconsole_conf"
+  else
+    printf '\nKEYMAP=colemak/colemak-pl\n' >> "$vconsole_conf"
+  fi
+  if command -v mkinitcpio >/dev/null 2>&1 && compgen -G '/etc/mkinitcpio.d/*.preset' >/dev/null; then
+    mkinitcpio -P
+  else
+    echo "Set KEYMAP=colemak/colemak-pl in /etc/vconsole.conf and rebuild your initramfs with your system's initramfs tool." >&2
+  fi
 fi
 
 install -d "$persistent_dir" /etc/pacman.d/hooks /etc/keyd /etc/modprobe.d
@@ -35,6 +49,7 @@ fi
 
 cat <<'MSG'
 Colemak-PL is installed as system XKB layout us, variant colemak_pl.
+The Linux console and early-boot keymap is colemak/colemak-pl.
 The keyd Copilot mapping is configured to emit Right Super.
 The pacman hook will restore the XKB variant after xkeyboard-config updates.
 Set kb_layout = "us" and kb_variant = "colemak_pl" in Hyprland input config if not already set.
